@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#f5f1e8">
+  <meta name="content-version" content="907be8da93ba2cad">
+  <meta name="description" content="周易原典阅读。六十四卦与易传，原文、白话译文、随文注释，安静地读懂一部经典。">
+  <title>周易 · 原典阅读</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="reader.css?v=907be8da93ba2cad">
+</head>
+<body>
+  <a class="skip" href="#main">跳至正文</a>
+  <header class="site-head">
+    <a class="brand" href="#/contents" aria-label="周易首页">周易<span>原典阅读</span></a>
+    <button id="nav-toggle" aria-expanded="false" aria-controls="site-nav">菜单</button>
+    <nav id="site-nav" aria-label="主导航">
+      <a href="#/contents" data-nav="contents" data-label="六十四卦">六十四卦</a>
+      <a href="#/essays" data-nav="essays" data-label="易传">易传</a>
+      <a href="#/read/preface" data-nav="guide" data-label="读易">读易</a>
+      <a href="#/search" data-nav="search" data-label="检索">检索</a>
+    </nav>
+    <div class="preferences">
+      <button id="script-toggle" aria-label="切换为繁体">繁</button>
+      <button id="theme-toggle" aria-label="切换为夜间模式">夜间</button>
+    </div>
+  </header>
+  <main id="main" tabindex="-1" aria-busy="true"><p class="loading" role="status">正在展开书页……</p></main>
+  <footer><span>周易</span><span id="credit">黄寿祺、张善文 译注</span><a href="#/contents">全书目录 ↑</a></footer>
+  <dialog id="directory" aria-labelledby="directory-title">
+    <div class="dialog-head"><h2 id="directory-title">全书目录</h2><button id="close-directory" aria-label="关闭目录">关闭</button></div>
+    <label class="directory-query"><span data-label="查找篇目">查找篇目</span><input id="directory-query" type="search" placeholder="卦名或篇名"></label>
+    <div id="directory-list"></div>
+  </dialog>
+  <dialog id="note-panel" aria-labelledby="note-title">
+    <div class="note-head"><h2 id="note-title"></h2><button id="close-note" aria-label="关闭注释">关闭</button></div>
+    <div id="note-scroll" tabindex="0"></div>
+    <nav class="note-pager" aria-label="同段注释"><button id="previous-note">上一条</button><label><span class="sr-only">选择注释</span><select id="note-select"></select></label><button id="next-note">下一条</button></nav>
+  </dialog>
+  <script src="vendor/opencc.js?v=907be8da93ba2cad"></script>
+  <script type="module" src="reader.js?v=907be8da93ba2cad"></script>
+</body>
+</html>
