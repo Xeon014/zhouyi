@@ -1,5 +1,5 @@
 {
-  "version": "907be8da93ba2cad",
+  "version": "94011bf5e549444b",
   "files": {
     "assets/001.png": "41147587313b5ebb1ab406ce5f1390cb551204fff79aec687fb8f93a3436075d",
     "assets/01723.jpeg": "a680685668be0d8ceb27bf55c18e754f72bc3f5e4a4aa33f7bb50e5c09523300",
@@ -296,13 +296,13 @@
     "data/reading/shuogua.json": "3902346434685183328de9b86507e255da59f42a6bc2fa42640525b4d2d89b52",
     "data/reading/xici-1.json": "d51de31f80577fe5217cb6925ae729fb3cd9e79d3a8704946eba015d248391d8",
     "data/reading/xici-2.json": "3beca8c82a4829b37f02976fced911aa43d8bbaf6a2d781afacd77945217e7ee",
-    "data/reading/xugua.json": "ab5cd11cfddfbc29627d33d8be6dc28f2a715985f4d713c944d1dafa6dcba570",
+    "data/reading/xugua.json": "b1cecb6be6ea826b97061c63f2f693faa245611603c5841ce1b1ccd1379dafc6",
     "data/reading/zagua.json": "b0044fa5db9bcce819764da0f67612f4270be0bbcf3cf1ae8741dc143021b19f",
     "data/search.json": "7c829c8393f71d04a975a4eb2d9e6db448f95ac34e116eb24279433be31a701f",
     "favicon.svg": "842f78a7722c506c96c8a1a736dd11c78f0b5b1cf0a104fb7d7cb9dbd1271577",
-    "index.html": "08a9e0f036f74634f0e44110ab01fc08da509c1d4b1614dc3352dbc0d3e9de65",
+    "index.html": "e993788ddcb42a84d50f172c4c91e8dac3671302494dadc0c5ad3a568800b41c",
     "reader.css": "706004f6803c3c8d5cfa6294b68e828f46fcab4a28f8c6b0658a4db8bae9d9ba",
-    "reader.js": "75422ad3e2b7b617df549d70a341668b826681188d9fc1c8380c7b49ebdd3e68",
+    "reader.js": "13443d2e94eac14b46d90d52dbb6e9306ac18bc681a77aa0e9d188ef7984ae88",
     "vendor/LICENSE.opencc-js.txt": "960f7fc16d8baa126802316a7df9078a383af4fb6bc60033adb28e85c08d5e5e",
     "vendor/opencc.js": "a2e6f9f5ffa73beb6b52c6963519fc53a813b7b30b1f24a3634a7927e8f58156"
   }
