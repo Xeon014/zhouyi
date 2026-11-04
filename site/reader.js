@@ -19,9 +19,10 @@ const cv = value => prefs.script === 'traditional' ? toTraditional(String(value)
 const text = value => escapeHTML(cv(value));
 const normalize = value => toSimple(String(value)).normalize('NFKC').toLowerCase();
 const kinds = {original:'原文', translation:'译文', note:'注释', explanation:'说明与总论'};
+const guideLabels = ['经的创作','易传十翼','作者与时代','命名之义','经传性质','易学流派','研究方法'];
 const cache = new Map();
 let catalog, currentChapter, searchData, directoryOpener;
-let readingView, chapterEntries = [], noteIndex = new Map(), activeNote = null, noteOpener = null;
+let readingView, chapterEntries = [], noteIndex = new Map(), activeNote = null, noteOpener = null, activeGuide = null;
 let noteModal = false, scrollTick = false;
 let renderedHash = '', renderSequence = 0, savedViews = {}, anchorNavigation = false;
 try { savedViews = JSON.parse(sessionStorage.getItem('zhouyi-tab-views') || '{}'); } catch {}
@@ -43,9 +44,6 @@ function applyPreferences() {
   $('#theme-toggle').setAttribute('aria-label', cv(prefs.theme === 'dark' ? '切换为日间模式' : '切换为夜间模式'));
   $('meta[name="theme-color"]').content = prefs.theme === 'dark' ? '#191e1b' : '#f5f1e8';
   $$('[data-label]').forEach(el => { el.textContent = cv(el.dataset.label); });
-  $('#credit').textContent = cv('黄寿祺、张善文 译注');
-  $('footer a').textContent = cv('全书目录 ↑');
-  $('.brand span').textContent = cv('原典阅读');
   $('#nav-toggle').textContent = cv('菜单');
   $('.skip').textContent = cv('跳至正文');
   $('#directory-title').textContent = cv('全书目录');
@@ -108,7 +106,7 @@ function contents(params) {
   const part = ['upper','lower'].includes(params.get('part')) ? params.get('part') : '';
   const query = params.get('q') || '';
   const chapters = catalog.chapters.filter(ch => ch.type === 'hexagram');
-  return `<section aria-labelledby="contents-title"><div class="section-head"><h1 id="contents-title">${text('六十四卦')}</h1></div>
+  return `<section aria-labelledby="contents-title"><a class="preface-entry" href="${url('read/preface')}"><span class="eyebrow">${text('译注')}</span><strong>${text('前言')}</strong><span aria-hidden="true">→</span></a><div class="section-head"><h1 id="contents-title">${text('六十四卦')}</h1></div>
     <div class="directory-tools"><nav class="tabs" aria-label="${text('上下经筛选')}">${[['','全部'],['upper','上经'],['lower','下经']].map(([value,label]) => `<a href="${url('contents',{part:value,q:query})}" ${value === part ? 'aria-current="page"' : ''}>${text(label)}</a>`).join('')}</nav>
     <label class="filter-box"><span class="sr-only">${text('查找卦名')}</span><input id="contents-query" type="search" value="${text(query)}" placeholder="${text('查找卦名或序号')}" autocomplete="off"></label></div>
     <div id="hex-grid" class="hex-grid">${chapters.filter(ch => (!part || ch.part === part) && (!query || normalize(ch.name + ' ' + ch.number).includes(normalize(query)))).map(ch => `<a class="hex-card" href="${url(`read/${ch.id}`)}">${symbol(ch)}<div><span class="meta">${String(ch.number).padStart(2,'0')} · ${text(ch.part === 'upper' ? '上经' : '下经')}</span><h3>${text(ch.name)}</h3></div></a>`).join('')}</div>
@@ -116,11 +114,12 @@ function contents(params) {
 }
 
 function essays() {
-  return `<h1>${text('易传')}</h1><div class="essays-list">${catalog.chapters.filter(ch => ch.type === 'essay').map((ch,index) => `<a class="essay-card" href="${url(`read/${ch.id}`)}"><span class="essay-number">0${index+1}</span><h2>${text(ch.name)}</h2><span aria-hidden="true">→</span></a>`).join('')}</div><p class="essay-related"><a href="#/contents">${text('彖 · 象 · 文言')} →</a></p>`;
+  return `<h1>${text('易传')}</h1><div class="essays-list">${catalog.chapters.filter(ch => ch.type === 'essay').map((ch,index) => `<a class="essay-card" href="${url(`read/${ch.id}`)}"><span class="essay-number">0${index+1}</span><h2>${text(ch.name)}</h2><span aria-hidden="true">→</span></a>`).join('')}</div>`;
 }
 
 function sidebar() {
-  return `<aside class="sidebar" aria-label="${text('篇内导航')}"><a class="sidebar-title" href="#/contents">${text('全书目录')}</a><nav>${chapterEntries.map(entry => `<a data-section="${entry.id}" href="${url(`read/${currentChapter.id}`,{at:entry.id})}">${text(entry.label)}</a>`).join('')}</nav></aside>`;
+  const href = entry => currentChapter?.type === 'guide' ? url(`read/${currentChapter.id}`,{part:entry.part || ''}) : url(`read/${currentChapter.id}`,{at:entry.id});
+  return `<aside class="sidebar" aria-label="${text('篇内导航')}"><a class="sidebar-title" href="#/contents">${text('全书目录')}</a><nav>${chapterEntries.map(entry => `<a data-section="${entry.id}" href="${href(entry)}">${text(entry.label)}</a>`).join('')}</nav></aside>`;
 }
 
 function notesHTML(notes, id) {
@@ -155,31 +154,69 @@ function prepareChapter(chapter) {
   if (chapter.summary) chapterEntries.push({id:chapter.id+'-summary',label:'总论'});
 }
 
+function guidePartFrom(params) {
+  const section = /^preface-section([1-7])$/.exec(params.get('at') || '');
+  const raw = section ? section[1] : (params.get('part') || '');
+  return /^[1-7]$/.test(raw) ? raw : '';
+}
+
+function guidePages(chapter) {
+  const template = document.createElement('template');
+  template.innerHTML = fragment(chapter.id+'-content', chapter.content);
+  const pages = [{id:chapter.id, part:'', label:'前言', nodes:[]}];
+  for (const node of [...template.content.childNodes]) {
+    if (node.nodeType === 1 && node.matches('p') && /^[一二三四五六七八九十]+、/.test(node.textContent)) {
+      const index = pages.length;
+      node.id = `${chapter.id}-section${index}`;
+      node.classList.add('guide-heading');
+      node.setAttribute('role','heading');
+      node.setAttribute('aria-level','2');
+      pages.push({id:node.id, part:String(index), label:guideLabels[index-1] || node.textContent.split('：')[0], nodes:[]});
+    }
+    pages[pages.length-1].nodes.push(node);
+  }
+  return pages;
+}
+
+function htmlFrom(nodes) {
+  const holder = document.createElement('div');
+  nodes.forEach(node => holder.appendChild(node));
+  return holder.innerHTML;
+}
+
+function bindPageNotes(chapter, html, label) {
+  const template = document.createElement('template');
+  template.innerHTML = html;
+  const present = new Set($$('[data-note]', template.content).map(el => el.dataset.note));
+  const notes = (chapter.notes || []).filter(note => present.has(note.id));
+  noteIndex = new Map();
+  notes.forEach((note, index) => noteIndex.set(note.id, {note, index, notes, unit:chapter.id, label, number:chapter.notes.findIndex(item => item.id === note.id)+1}));
+  return notes;
+}
+
 function reading(chapter, params) {
   const from = params.get('from');
-  const back = from?.startsWith('#/search') ? `<a class="crumb" href="${escapeHTML(from)}">← ${text('返回检索结果')}</a>` : `<a class="crumb" href="${chapter.type === 'essay' ? '#/essays' : '#/contents'}">${text(chapter.type === 'essay' ? '易传' : '六十四卦')} / ${text(chapter.name)}</a>`;
   const isGuide = chapter.type === 'guide';
-  const intro = chapter.type === 'hexagram' ? `${chapter.part === 'upper' ? '上经' : '下经'} · 第${chapter.number}卦` : chapter.type === 'essay' ? '易传' : '读易';
+  const back = from?.startsWith('#/search') ? `<a class="crumb" href="${escapeHTML(from)}">← ${text('返回检索结果')}</a>` : isGuide ? `<a class="crumb" href="${url('read/preface')}">${text('前言')}</a>` : `<a class="crumb" href="${chapter.type === 'essay' ? '#/essays' : '#/contents'}">${text(chapter.type === 'essay' ? '易传' : '六十四卦')} / ${text(chapter.name)}</a>`;
   prepareChapter(chapter);
-  let guide = '';
+  activeGuide = null;
+  let mainText = '';
   if (isGuide) {
-    const template = document.createElement('template');
-    template.innerHTML = fragment(chapter.id+'-content', chapter.content);
-    $$('p',template.content).filter(p => /^[一二三四五六七八九十]+、/.test(p.textContent)).forEach((p,index) => {
-      p.id = `${chapter.id}-section${index+1}`;
-      p.classList.add('guide-heading');
-      p.setAttribute('role','heading');
-      p.setAttribute('aria-level','2');
-      chapterEntries.push({id:p.id,label:p.textContent.split('：')[0]});
-    });
-    guide = template.innerHTML;
-  }
-  const mainText = isGuide ? `<div class="guide-body" id="${chapter.id}">${guide}</div>${notesHTML(chapter.notes, chapter.id)}` : chapter.groups.map(group => `<section class="reading-unit" data-kind="${group.kind}" id="${group.id}" aria-labelledby="${group.id}-label"><div class="unit-title"><h2 id="${group.id}-label">${text(chapterEntries.find(e => e.id === group.id).label)}</h2><a href="${url(`read/${chapter.id}`,{at:group.id})}" aria-label="${text('定位到' + group.label)}">§</a></div>${pairedText(group)}<div class="unit-support">${notesHTML(group.notes,group.id)}${group.explanation ? `<details class="explanation-toggle" id="${group.id}-explanation"><summary>${text('说明')}</summary><div class="explanation">${fragment(group.id+'-explanation',group.explanation)}</div></details>` : ''}</div></section>`).join('');
-  const all = catalog.chapters.filter(ch => ch.type !== 'guide');
-  const index = all.findIndex(ch => ch.id === chapter.id);
-  const previous = all[index - 1], next = all[index + 1];
-  const pager = isGuide ? '' : `<nav class="pager" aria-label="${text('前后篇目')}">${previous ? `<a href="${url(`read/${previous.id}`)}"><small>← ${text('上一篇')}</small>${text(previous.title)}</a>` : ''}${next ? `<a href="${url(`read/${next.id}`)}"><small>${text('下一篇')} →</small>${text(next.title)}</a>` : ''}</nav>`;
-  return `<div class="reader-layout">${sidebar()}<article class="reader-article mode-${prefs.mode}">${back}<header class="chapter-head"><div><p class="eyebrow">${text(intro)}</p><h1>${text(chapter.name)}</h1></div>${chapter.type === 'hexagram' ? symbol(chapter) : ''}</header>${toolbar(isGuide)}${mainText}${chapter.summary ? `<details class="chapter-summary" id="${chapter.id}-summary"><summary>${text('总论')}</summary><div class="summary-body">${fragment(chapter.id+'-summary',chapter.summary)}</div></details>` : ''}${pager}</article></div>`;
+    const pages = guidePages(chapter);
+    const page = pages.find(item => item.part === (params.get('part') || '')) || pages[0];
+    activeGuide = page;
+    chapterEntries = pages.map(item => ({id:item.id, label:item.label, part:item.part}));
+    const html = htmlFrom(page.nodes);
+    mainText = `<div class="guide-body"${page.part ? '' : ` id="${chapter.id}"`}>${html}</div>${notesHTML(bindPageNotes(chapter, html, page.label), chapter.id)}`;
+  } else mainText = chapter.groups.map(group => `<section class="reading-unit" data-kind="${group.kind}" id="${group.id}" aria-labelledby="${group.id}-label"><div class="unit-title"><h2 id="${group.id}-label">${text(chapterEntries.find(e => e.id === group.id).label)}</h2><a href="${url(`read/${chapter.id}`,{at:group.id})}" aria-label="${text('定位到' + group.label)}">§</a></div>${pairedText(group)}<div class="unit-support">${notesHTML(group.notes,group.id)}${group.explanation ? `<details class="explanation-toggle" id="${group.id}-explanation"><summary>${text('说明')}</summary><div class="explanation">${fragment(group.id+'-explanation',group.explanation)}</div></details>` : ''}</div></section>`).join('');
+  const intro = chapter.type === 'hexagram' ? `${chapter.part === 'upper' ? '上经' : '下经'} · 第${chapter.number}卦` : chapter.type === 'essay' ? '易传' : (activeGuide?.part ? '译注 · 前言' : '译注');
+  const heading = activeGuide ? activeGuide.label : chapter.name;
+  const place = isGuide ? chapterEntries.findIndex(entry => entry.id === activeGuide.id) : catalog.chapters.filter(ch => ch.type !== 'guide').findIndex(ch => ch.id === chapter.id);
+  const neighbors = isGuide ? chapterEntries : catalog.chapters.filter(ch => ch.type !== 'guide');
+  const previous = neighbors[place-1], next = neighbors[place+1];
+  const onward = isGuide && !next ? catalog.chapters.find(ch => ch.type === 'hexagram') : null;
+  const pager = (previous || next || onward) ? `<nav class="pager" aria-label="${text(isGuide && next ? '前后节' : '前后篇目')}">${previous ? `<a href="${isGuide ? url(`read/${chapter.id}`,{part:previous.part || ''}) : url(`read/${previous.id}`)}"><small>← ${text(isGuide ? '上一节' : '上一篇')}</small>${text(isGuide ? previous.label : previous.title)}</a>` : ''}${next ? `<a href="${isGuide ? url(`read/${chapter.id}`,{part:next.part || ''}) : url(`read/${next.id}`)}"><small>${text(isGuide ? '下一节' : '下一篇')} →</small>${text(isGuide ? next.label : next.title)}</a>` : onward ? `<a href="${url(`read/${onward.id}`)}"><small>${text('下一篇')} →</small>${text(onward.title)}</a>` : ''}</nav>` : '';
+  return `<div class="reader-layout">${sidebar()}<article class="reader-article mode-${prefs.mode}">${back}<header class="chapter-head"><div><p class="eyebrow">${text(intro)}</p><h1>${text(heading)}</h1></div>${chapter.type === 'hexagram' ? symbol(chapter) : ''}</header>${toolbar(isGuide)}${mainText}${chapter.summary ? `<details class="chapter-summary" id="${chapter.id}-summary"><summary>${text('总论')}</summary><div class="summary-body">${fragment(chapter.id+'-summary',chapter.summary)}</div></details>` : ''}${pager}</article></div>`;
 }
 
 function excerpt(value, query) {
@@ -220,9 +257,10 @@ function openNote(id, opener = null, query = '') {
   if (opener) noteOpener = opener;
   else if (!noteOpener) noteOpener = document.getElementById(id+'-ref') || document.getElementById(item.unit+'-notes');
   activeNote = id;
-  $('#note-title').textContent = cv(`${currentChapter.name} · ${item.label} · 注${item.index+1}`);
+  const noteNumber = item.number || item.index+1;
+  $('#note-title').textContent = cv(`${currentChapter.name} · ${item.label} · 注${noteNumber}`);
   $('#note-scroll').innerHTML = `<div class="note-body" id="${id}">${fragment(id,item.note.html)}</div>`;
-  $('#note-select').innerHTML = item.notes.map((note,index) => `<option value="${note.id}" ${note.id === id ? 'selected' : ''}>${text('注')} ${index+1} / ${item.notes.length}</option>`).join('');
+  $('#note-select').innerHTML = item.notes.map((note,index) => { const entry = noteIndex.get(note.id); const number = entry?.number || index+1; return `<option value="${note.id}" ${note.id === id ? 'selected' : ''}>${text('注')} ${entry?.number ? number : `${number} / ${item.notes.length}`}</option>`; }).join('');
   $('#previous-note').disabled = item.index === 0;
   $('#next-note').disabled = item.index === item.notes.length-1;
   $$('[data-note]', main).forEach(el => el.setAttribute('aria-expanded',String(el.dataset.note === id)));
@@ -234,6 +272,14 @@ function openNote(id, opener = null, query = '') {
 
 function updatePosition() {
   if (!currentChapter || !chapterEntries.length) return;
+  if (currentChapter.type === 'guide') {
+    const part = route().params.get('part') || '';
+    const current = chapterEntries.find(entry => (entry.part || '') === part) || chapterEntries[0];
+    const select = $('#chapter-position');
+    if (select) select.value = current.id;
+    $$('[data-section]').forEach(link => link.dataset.section === current.id ? link.setAttribute('aria-current','page') : link.removeAttribute('aria-current'));
+    return;
+  }
   const toolbarBottom = $('.toolbar').getBoundingClientRect().bottom;
   let current = chapterEntries[0];
   for (const entry of chapterEntries) {
@@ -328,16 +374,17 @@ function revealTarget(params) {
 async function render({preserve = false} = {}) {
   saveView();
   closeNote(false);
-  const sequence = ++renderSequence, hash = location.hash || '#/contents';
+  const sequence = ++renderSequence;
+  let hash = location.hash || '#/contents';
   const forceTarget = anchorNavigation;
   anchorNavigation = false;
-  const {path,params} = route(hash), saved = savedViews[hash];
+  let {path,params} = route(hash), saved = savedViews[hash];
   currentChapter = null;
   main.setAttribute('aria-busy','true');
   main.innerHTML = `<p class="loading" role="status">${text('正在展开书页……')}</p>`;
   try {
     catalog = await loadJSON('data/catalog.json');
-    let content, title = '周易 · 原典阅读';
+    let content, title = '周易';
     let nav = path === '/essays' ? 'essays' : path === '/search' ? 'search' : 'contents';
     if (path === '/contents') content = contents(params);
     else if (path === '/essays') { content = essays(); title = '易传 · 周易'; }
@@ -349,8 +396,17 @@ async function render({preserve = false} = {}) {
       if (sequence !== renderSequence) return;
       currentChapter = chapter;
       readingView = view;
+      if (chapter.type === 'guide') {
+        const canonical = url(`read/${id}`,{part:guidePartFrom(params),from:params.get('from') || ''});
+        if (canonical !== hash) {
+          history.replaceState(null,'',canonical);
+          hash = canonical;
+          ({path,params} = route(hash));
+          saved = savedViews[hash];
+        }
+      }
       content = reading(chapter,params);
-      title = `${chapter.title} · 周易`;
+      title = activeGuide?.part ? `${activeGuide.label} · 周易` : `${chapter.title} · 周易`;
       nav = chapter.type === 'guide' ? 'guide' : chapter.type === 'essay' ? 'essays' : 'contents';
     } else throw new Error('没有找到这个页面，请从目录重新选择。');
     if (sequence !== renderSequence) return;
@@ -391,7 +447,7 @@ function fillDirectory() {
   if (!catalog) return;
   const query = normalize($('#directory-query').value);
   const matches = catalog.chapters.filter(ch => !query || normalize(`${ch.name} ${ch.number || ''}`).includes(query));
-  $('#directory-list').innerHTML = matches.length ? [['upper','上经'],['lower','下经'],['essay','易传'],['guide','读易']].map(([part,label]) => {
+  $('#directory-list').innerHTML = matches.length ? [['guide','前言'],['upper','上经'],['lower','下经'],['essay','易传']].map(([part,label]) => {
     const chapters = matches.filter(ch => ch.part === part || ch.type === part);
     return chapters.length ? `<section><h3>${text(label)}</h3>${chapters.map(ch => chapterLink(ch)).join('')}</section>` : '';
   }).join('') : `<p class="empty">${text('没有找到相符篇目。')}</p>`;
@@ -440,7 +496,10 @@ document.addEventListener('change', event => {
   if (event.target.id === 'font-select') { prefs.font = Number(event.target.value); persistPreferences(); }
   if (event.target.id === 'refs-select') { prefs.refs = event.target.value === 'show'; persistPreferences(); }
   if (event.target.id === 'note-select') openNote(event.target.value);
-  if (event.target.id === 'chapter-position') navigate(url(`read/${currentChapter.id}`,{at:event.target.value}));
+  if (event.target.id === 'chapter-position') {
+    const entry = chapterEntries.find(item => item.id === event.target.value);
+    navigate(currentChapter?.type === 'guide' ? url(`read/${currentChapter.id}`,{part:entry?.part || ''}) : url(`read/${currentChapter.id}`,{at:event.target.value}));
+  }
 });
 
 document.addEventListener('input', event => {
