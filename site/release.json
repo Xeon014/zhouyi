@@ -1,5 +1,5 @@
 {
-  "version": "1413b5fce836852e",
+  "version": "2720105f65262728",
   "files": {
     "assets/001.png": "41147587313b5ebb1ab406ce5f1390cb551204fff79aec687fb8f93a3436075d",
     "assets/01723.jpeg": "a680685668be0d8ceb27bf55c18e754f72bc3f5e4a4aa33f7bb50e5c09523300",
@@ -300,9 +300,9 @@
     "data/reading/zagua.json": "b0044fa5db9bcce819764da0f67612f4270be0bbcf3cf1ae8741dc143021b19f",
     "data/search.json": "7c829c8393f71d04a975a4eb2d9e6db448f95ac34e116eb24279433be31a701f",
     "favicon.svg": "842f78a7722c506c96c8a1a736dd11c78f0b5b1cf0a104fb7d7cb9dbd1271577",
-    "index.html": "d68746a483c7bf328fb4fd9a4c06190bd92d702fa7029bd8a3dd6b81f71d763e",
-    "reader.css": "985efa3f2e652de4cc49800a18320042f3d5e5c3a4c0c7d678e7ff14ea6510c7",
-    "reader.js": "3108e03b8aae9f3b2cb8383121fb25e378750d53b44b9b4522e7037eed70ea02",
+    "index.html": "ad7f7889797622086835aaba608c10418f3c3d2aaae4925e71817474f1ab76f3",
+    "reader.css": "8a4659a7cc818d223c8ff738969886437e6a42cde559a5d8017bcd4aaf365e46",
+    "reader.js": "7a401c16238b515c4b1d9e289d6f01326443727ca444a4eafa684ebc5f16648e",
     "vendor/LICENSE.opencc-js.txt": "960f7fc16d8baa126802316a7df9078a383af4fb6bc60033adb28e85c08d5e5e",
     "vendor/opencc.js": "a2e6f9f5ffa73beb6b52c6963519fc53a813b7b30b1f24a3634a7927e8f58156"
   }

@@ -20,13 +20,33 @@ prefs.font = Number.isFinite(storedFont) ? Math.min(30, Math.max(17, storedFont)
 const cv = value => prefs.script === 'traditional' ? toTraditional(String(value)) : String(value);
 const text = value => escapeHTML(cv(value));
 const normalize = value => toSimple(String(value)).normalize('NFKC').toLowerCase();
+// Highlight every match while retaining original characters and offsets.
+// Ported from the Sanguozhi reader, where it also guards search snippets.
+function highlightText(value, query, normalizer, escape) {
+  const needle = normalizer(query);
+  if (!needle) return escape(value);
+  const chars = [...String(value)], folded = chars.map(normalizer), offsets = [];
+  let size = 0;
+  for (let i = 0; i < chars.length; i++) { offsets.push(size); size += folded[i].length; }
+  const haystack = folded.join('');
+  let at = 0, end = 0, html = '';
+  while ((at = haystack.indexOf(needle, at)) >= 0) {
+    const first = offsets.findIndex((p, i) => p + folded[i].length > at);
+    let last = first;
+    while (last < chars.length && offsets[last] < at + needle.length) last++;
+    if (first < end) { at += needle.length; continue; }
+    html += escape(chars.slice(end, first).join('')) + '<mark>' + escape(chars.slice(first, last).join('')) + '</mark>';
+    end = last; at += needle.length;
+  }
+  return html + escape(chars.slice(end).join(''));
+}
 const kinds = {original:'原文', translation:'译文', note:'注释', explanation:'说明与总论'};
 const guideLabels = ['经的创作','易传十翼','作者与时代','命名之义','经传性质','易学流派','研究方法'];
 const cache = new Map();
 let catalog, currentChapter, searchData, directoryOpener;
 let readingView, chapterEntries = [], noteIndex = new Map(), activeNote = null, noteOpener = null, activeGuide = null;
 let noteModal = false, scrollTick = false, appearanceAnchor = null, appearanceRestore = null, menuAnchor = null, menuRestore = null;
-let renderedHash = '', renderSequence = 0, savedViews = {}, anchorNavigation = false;
+let renderedHash = '', renderSequence = 0, savedViews = {}, anchorNavigation = false, pendingSearchFocus = false;
 try { savedViews = JSON.parse(sessionStorage.getItem('zhouyi-tab-views') || '{}'); } catch {}
 history.scrollRestoration = 'manual';
 
@@ -322,9 +342,8 @@ function excerpt(value, query) {
   const converted = cv(value), needle = normalize(query);
   const at = normalize(converted).indexOf(needle), start = Math.max(0, at - 40);
   const end = Math.min(converted.length, Math.max(start + 145, at + needle.length + 35));
-  const content = converted.slice(start, end), local = normalize(content).indexOf(needle);
-  const marked = local < 0 ? escapeHTML(content) : escapeHTML(content.slice(0,local)) + '<mark>' + escapeHTML(content.slice(local,local+needle.length)) + '</mark>' + escapeHTML(content.slice(local+needle.length));
-  return (start ? '…' : '') + marked + (end < converted.length ? '…' : '');
+  const content = converted.slice(start, end);
+  return (start ? '…' : '') + highlightText(content, query, normalize, escapeHTML) + (end < converted.length ? '…' : '');
 }
 
 function closeNote(restoreFocus = true) {
@@ -434,19 +453,15 @@ function focusTarget(element) {
 
 function highlightIn(element, query) {
   if (!query) return;
-  const needle = normalize(query);
   const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT, {acceptNode:node => node.parentElement.closest('button,summary,mark,.unit-title,.layer-label') ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT});
   const nodes = [];
   while (walker.nextNode()) nodes.push(walker.currentNode);
   for (const node of nodes) {
-    const index = normalize(node.textContent).indexOf(needle);
-    if (index < 0) continue;
-    const value = node.textContent, fragment = document.createDocumentFragment();
-    fragment.append(document.createTextNode(value.slice(0,index)));
-    const mark = document.createElement('mark');
-    mark.textContent = value.slice(index,index+needle.length);
-    fragment.append(mark,document.createTextNode(value.slice(index+needle.length)));
-    node.replaceWith(fragment);
+    const html = highlightText(node.textContent, query, normalize, escapeHTML);
+    if (!html.includes('<mark')) continue;
+    const template = document.createElement('template');
+    template.innerHTML = html;
+    node.replaceWith(...template.content.childNodes);
   }
 }
 
@@ -534,6 +549,7 @@ async function render({preserve = false} = {}) {
       }
     }
     updatePosition();
+    if (pendingSearchFocus) { pendingSearchFocus = false; $('#search-query')?.focus({preventScroll:true}); }
     main.dataset.route = hash;
     main.setAttribute('aria-busy','false');
   } catch (error) {
@@ -692,6 +708,16 @@ document.addEventListener('keydown', event => {
   if (event.key === 'Escape' && dialog.open) { event.preventDefault(); dialog.close(); return; }
   if (event.key === 'Escape' && $('#appearance').matches(':popover-open')) { event.preventDefault(); $('#appearance').hidePopover(); return; }
   if (event.key === 'Escape' && $('#site-menu').matches(':popover-open')) { event.preventDefault(); $('#site-menu').hidePopover(); }
+});
+// "/" jumps to search — same convention as the Sanguozhi reader.
+document.addEventListener('keydown', event => {
+  if (event.key !== '/' || event.ctrlKey || event.metaKey || event.altKey || event.isComposing || event.repeat) return;
+  const active = document.activeElement;
+  if (active && (active.isContentEditable || ['INPUT','TEXTAREA','SELECT'].includes(active.tagName))) return;
+  if (dialog.open || notePanel.open || $('#appearance').matches(':popover-open') || $('#site-menu').matches(':popover-open')) return;
+  event.preventDefault();
+  if (route().path === '/search') $('#search-query')?.focus({preventScroll:true});
+  else { pendingSearchFocus = true; navigate(url('search')); }
 });
 window.addEventListener('hashchange', () => render());
 window.addEventListener('pagehide',saveView);
