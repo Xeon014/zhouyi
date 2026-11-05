@@ -4,17 +4,17 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#f5f1e8">
-  <meta name="content-version" content="c71f687758c70938">
+  <meta name="content-version" content="1413b5fce836852e">
   <meta name="description" content="周易原典阅读。六十四卦与易传，原文、白话译文、随文注释，安静地读懂一部经典。">
   <title>周易</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="reader.css?v=c71f687758c70938">
+  <link rel="stylesheet" href="reader.css?v=1413b5fce836852e">
 </head>
 <body>
   <a class="skip" href="#main">跳至正文</a>
   <header class="site-head">
     <a class="brand" href="#/contents" aria-label="周易首页">周易</a>
-    <button id="nav-toggle" aria-expanded="false" aria-controls="site-nav">菜单</button>
+    <button id="nav-toggle" class="site-menu-open" type="button" popovertarget="site-menu" aria-expanded="false" aria-controls="site-menu" aria-haspopup="dialog">菜单</button>
     <nav id="site-nav" aria-label="主导航">
       <a href="#/read/preface" data-nav="guide" data-label="前言">前言</a>
       <a href="#/contents" data-nav="contents" data-label="六十四卦">六十四卦</a>
@@ -22,8 +22,7 @@
       <a href="#/search" data-nav="search" data-label="检索">检索</a>
     </nav>
     <div class="preferences">
-      <button id="script-toggle" aria-label="切换为繁体">繁</button>
-      <button id="theme-toggle" aria-label="切换为夜间模式">夜间</button>
+      <button id="appearance-toggle" class="appearance-open" type="button" popovertarget="appearance" aria-expanded="false" aria-controls="appearance" aria-label="阅读外观"><span class="aa-small" aria-hidden="true">A</span><span class="aa-large" aria-hidden="true">a</span></button>
     </div>
   </header>
   <main id="main" tabindex="-1" aria-busy="true"><p class="loading" role="status">正在展开书页……</p></main>
@@ -38,7 +37,50 @@
     <div id="note-scroll" tabindex="0"></div>
     <nav class="note-pager" aria-label="同段注释"><button id="previous-note">上一条</button><label><span class="sr-only">选择注释</span><select id="note-select"></select></label><button id="next-note">下一条</button></nav>
   </dialog>
-  <script src="vendor/opencc.js?v=c71f687758c70938"></script>
-  <script type="module" src="reader.js?v=c71f687758c70938"></script>
+  <div id="site-menu" popover="auto" role="dialog" tabindex="-1" aria-label="菜单">
+    <nav aria-label="主导航">
+      <a href="#/read/preface" data-nav="guide" data-label="前言">前言</a>
+      <a href="#/contents" data-nav="contents" data-label="六十四卦">六十四卦</a>
+      <a href="#/essays" data-nav="essays" data-label="易传">易传</a>
+      <a href="#/search" data-nav="search" data-label="检索">检索</a>
+    </nav>
+  </div>
+  <div id="appearance" popover="auto" role="dialog" tabindex="-1" aria-label="阅读外观">
+    <p class="appearance-sample" data-label="元亨利贞">元亨利贞</p>
+    <div class="appearance-size">
+      <button type="button" id="font-smaller" aria-label="减小字号">A</button>
+      <input id="font-range" type="range" min="17" max="30" step="1" value="21" aria-label="字号" aria-valuetext="21">
+      <button type="button" id="font-larger" aria-label="增大字号">A</button>
+    </div>
+    <div class="appearance-themes" role="group" aria-label="纸色">
+      <button type="button" class="theme-swatch" data-theme="white" aria-checked="false" aria-label="白色"></button>
+      <button type="button" class="theme-swatch" data-theme="light" aria-checked="true" aria-label="暖纸"></button>
+      <button type="button" class="theme-swatch" data-theme="gray" aria-checked="false" aria-label="灰色"></button>
+      <button type="button" class="theme-swatch" data-theme="dark" aria-checked="false" aria-label="夜间"></button>
+    </div>
+    <div class="appearance-row">
+      <span data-label="字体">字体</span>
+      <div class="appearance-options" id="face-group" role="group" aria-label="字体">
+        <button type="button" data-face="serif" data-label="宋" aria-pressed="true">宋</button>
+        <button type="button" data-face="sans" data-label="黑" aria-pressed="false">黑</button>
+      </div>
+    </div>
+    <div class="appearance-row">
+      <span data-label="简繁">简繁</span>
+      <div class="appearance-options" id="script-group" role="group" aria-label="简繁">
+        <button type="button" data-script="simple" data-label="简" aria-pressed="true">简</button>
+        <button type="button" data-script="traditional" data-label="繁" aria-pressed="false">繁</button>
+      </div>
+    </div>
+    <div class="appearance-row" id="refs-row" hidden>
+      <span data-label="正文注号">正文注号</span>
+      <div class="appearance-options" id="refs-group" role="group" aria-label="正文注号">
+        <button type="button" data-refs="show" data-label="显示" aria-pressed="true">显示</button>
+        <button type="button" data-refs="hide" data-label="隐藏" aria-pressed="false">隐藏</button>
+      </div>
+    </div>
+  </div>
+  <script src="vendor/opencc.js?v=1413b5fce836852e"></script>
+  <script type="module" src="reader.js?v=1413b5fce836852e"></script>
 </body>
 </html>
